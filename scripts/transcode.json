@@ -1,0 +1,33 @@
+{
+  "directory": "",
+  "flac": {
+    "exec": "",
+	"flac": {
+	  "$src": "",
+	  "$dest": "",
+	  "cmd": "-o \"$dest\" \"$src\""
+	}
+  },
+  "vlc": {
+    "exec": "",
+    "wav": {
+      "$src": "",
+      "$dest": "",
+      "$acodec": "s16l",
+      "$mux": "wav",
+      "$channels": "2",
+      "$samplerate": "44100",
+      "cmd": "-vvv \"$src\" --sout #transcode{acodec=$acodec,channels=$channels,samplerate=$samplerate}:standard{access=file,mux=$mux,dst=\"$dest\"} vlc://quit"
+    },
+    "mp3": {
+      "$src": "",
+      "$dest": "",
+      "$acodec": "mp3",
+      "$ab": "192",
+      "$mux": "raw",
+      "$channels": "2",
+      "$samplerate": "44100",
+      "cmd": "-vvv \"$src\" --sout #transcode{acodec=$acodec,ab=$ab,channels=$channels,samplerate=$samplerate}:standard{access=file,mux=$mux,dst=\"$dest\"} vlc://quit"
+    }
+  }
+}

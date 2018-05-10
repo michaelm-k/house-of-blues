@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title><%= title %></title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css">
+        <link rel="stylesheet" type="text/css" href="/stylesheets/style.css">
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+	</head>
+	<body>
+        <div class="container">
+			<h1>Search for an Album</h1>
+			<form id="search-form">
+				<input type="text" id="query" value="" class="form-control" />
+				<input type="submit" id="search" class="btn btn-primary" value="Search" />
+			</form>
+			<div id="results-hidden" class="hidden">
+				<div class="result cover"></div>
+			</div>
+			<div id="results"></div>
+		</div>
+        
+        <script>
+			var $resultsPlaceholder = $('#results');
+
+			function makeAlbumObj(item) {
+				var albumObj = {
+					'album_artist': null,
+					'album': null,
+					'year': null,
+					'songs': []
+				};
+				albumObj.album = item.name;
+				albumObj.album_artist = item.artists[0].name;
+				albumObj.year = item.release_date.split("-")[0];
+				for (var i = 0; i < item.tracks.items.length; i++) {
+					var track = item.tracks.items[i];
+					var songObj = {
+						'title': null,
+						'artist': null
+					};
+					songObj.title = track.name;
+					songObj.artist = track.artists[0].name;
+					albumObj.songs.push(songObj);
+				}
+				return albumObj;
+			}
+			
+			function makeResultElement(item) {
+				var $el = $('#results-hidden .result').clone();
+				$el.css('background-image', 'url(' + item.images[0].url + ')');
+				$el.attr('id', item.id);
+				$el.click(function(e) {
+					var id = $(this).attr('id');
+					var request = Spotify.makeRequest(Spotify.api.getAlbum, [id]);
+					request.then(
+						function(data, textStatus, jqXHR) {
+							var albumObj = makeAlbumObj(data);
+							var json = JSON.stringify(albumObj, null, 2);
+							console.log(json);
+						}, function(jqXHR, textStatus, errorThrown) {}
+					);
+				});
+				return $el;
+			}
+			
+			function populateResults(response) {
+				var items = response.items;
+				$resultsPlaceholder.empty();
+				for (var i = 0; i < items.length; i++) {
+					var item = items[i];
+					var $el = makeResultElement(item);
+					$resultsPlaceholder.append($el);
+				}
+			}
+				
+			var Spotify = function() {
+				var accessToken = '';
+			
+				function requestAuthorization() {
+					return $.ajax({
+						type: 'GET',
+						url: '/spotify/authorize',
+						success: function(data, status, jqXHR) {
+							accessToken = data.access_token; // set access token
+						},
+						error: function(jqXHR, status, err) {}
+					});
+				}
+			
+				return {
+					api: {
+						getAlbum: function(args) {
+							var albumId = args[0];
+							return $.ajax({
+								url: 'https://api.spotify.com/v1/albums/' + albumId,
+								headers: {
+									'Authorization': 'Bearer ' + accessToken
+								},
+								success: function (data, status, jqXHR) {},
+								error: function(jqXHR, status, err) {}
+							});
+						},
+						searchAlbums: function(args) {
+							var query = args[0];
+							return $.ajax({
+								url: 'https://api.spotify.com/v1/search',
+								headers: {
+									'Authorization': 'Bearer ' + accessToken
+								},
+								data: {
+									q: query,
+									type: 'album'
+								},
+								success: function (data, status, jqXHR) {},
+								error: function(jqXHR, status, err) {}
+							});
+						}
+					},
+					makeRequest: function(callback, args) {
+						var promise = new Promise(function(resolve, reject) {
+							requestAuthorization().then(function(data, status, jqXHR) {
+								resolve(callback(args));
+							}, function(jqXHR, status, err) {
+								reject(new Error(''));
+							});
+						});
+						return promise;
+					}
+				};
+			}();
+
+			document.getElementById('search-form').addEventListener('submit', function (e) {
+				e.preventDefault();
+				var request = Spotify.makeRequest(Spotify.api.searchAlbums, [document.getElementById('query').value]);
+				request.then(
+					function(data, textStatus, jqXHR) {
+						populateResults(data.albums);
+					}, function(jqXHR, textStatus, errorThrown) {}
+				);
+			}, false);
+        </script>
+	</body>
+</html>
